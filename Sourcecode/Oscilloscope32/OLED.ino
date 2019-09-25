@@ -10,13 +10,17 @@
   ├────────────────────────────────────────────────────┤
   │ InitOLED(): Configuration of the OLED Display                                    ┃
   │ Y_Div()   : Stretching Graph                                                     ┃
+  │ X_Div()   : Time Base                                                            ┃
   │ Plot()    : Show the Graph on Screen                                             ┃
   │ UI()      : Show/Change User-Interface                                           ┃
-  │                                                                                  ┃
+  │ ShowSetting(): Show your setting while changing it                               ┃
   │                                                                                  ┃
   ├──────────────────────────┬─────────────────────────┤
-  │ Version: 0.0.1 - ALPHA                    Date: 24.Sep.2019                      ┃
+  │ Version: 0.0.2 - ALPHA                    Date: 25.Sep.2019                      ┃
   ├──────────────────────────┴─────────────────────────┤
+  │ + X_Div()                                                                        ┃
+  │ + Y_Div()                                                                        ┃
+  │ + ShowSetting()                                                                  ┃
   └────────────────────────────────────────────────────┘
 */
 
@@ -38,22 +42,35 @@ void InitOLED() {                                                               
 }
 
 void Y_Div() {                                                                                  // # Stretching Graph Peak-to-Peak (At the moment Center stretch)
-  Offset_Y = map( analogRead(25), 0, 4095, 0, 2047 );                                           // Change Range 0-4095 -> 0-2047
-  if (Offset_Y >= 2040) {                                                                       // When you Potentiometer reach critical value (2040 of 2048)
-    digitalWrite(LED, HIGH);                                                                    // Built-In Blue LED start shining
-  } else {
-    digitalWrite(LED, LOW);                                                                     // Built-In Blue LED stops shining
+  Offset_Y = map( analogRead(Y_POT), 0, 4095, 0, 2047 );                                        // Change Range 0-4095 -> 0-2047
+
+  if ( (map(Offset_Y, 0, 2047, 1, 10)) != (map(Offset_Y_Last, 0, 2047, 1, 10)) ) {              // Compare now and last value of Offset_Y
+    Y.last_refresh = millis();                                                                  // Setting time of last comparing was false
   }
+
+  Offset_Y_Last = Offset_Y;                                                                     // Now -> Last
 
   return;
 }
 
-void Plot() {                                                                                   // # Plot Graph on Screen
-  for (short i = 0; i <= BUFFERSIZE; i++) {                                                     // Print each value from the buffer
-    if (Filled) {                                                                               // Change look of the graph
-      display.drawLine(i, MAX_Y, i, map(Buffer[i], 0 + Offset_Y, 4095 - Offset_Y, MAX_Y, 0) );  // Draw Line
+void X_Div() {                                                                                  // # Changing Timebase range on Display
+  Multi_X = map( analogRead(X_POT), 0, 4095, 1, BUFFERSIZE / MAX_X);                            // Calculate streching Timebase on Display
+
+  if (Multi_X != Multi_X_Last) {                                                                // Compare now and last value of Multi_X
+    X.last_refresh = millis();                                                                  // Setting time of last comparing was false
+  }
+
+  Multi_X_Last = Multi_X;                                                                       // Now -> Last
+
+  return;
+}
+
+void Plot() {                                                                                               // # Plot Graph on Screen
+  for (short i = 0; i <= BUFFERSIZE / Multi_X; i++) {                                                       // Print each value from the buffer
+    if (Filled || Multi_X >= 4) {                                                                           // Change look of the graph if resolution is to high for Display (4 is a good value)
+      display.drawLine(i, MAX_Y, i, map(Buffer[i * Multi_X], 0 + Offset_Y, 4095 - Offset_Y, MAX_Y, 0) );    // Draw Line
     } else {
-      display.setPixel(i, map(Buffer[i], 0 + Offset_Y, 4095 - Offset_Y, MAX_Y, 0) );            // Draw Dots
+      display.setPixel(i, map(Buffer[i * Multi_X], 0 + Offset_Y, 4095 - Offset_Y, MAX_Y, 0) );              // Draw Dots
     }
   }
 
@@ -79,6 +96,20 @@ void UI() {                                                                     
     //display.drawVerticalLine( 32,  0, MAX_Y);
     //display.drawVerticalLine( 64,  0, MAX_Y);
     //display.drawVerticalLine( 96,  0, MAX_Y);
+  }
+
+  return;
+}
+
+void ShowSetting() {                                                                            // # Show your setting while changing it
+  if ( (Y.last_refresh + 500) > millis() ) {                                                    // If Y-Range has changed,...
+    display.drawString(  0, 0, (String)(map(Offset_Y, 0, 2047, 1, 10)) + " Y-Axis" );           // ...show this Information
+  } else if (X.last_refresh + 500 > millis() ) {                                                // If X-Range has changed,...
+    display.drawString(0, 0, (String)Multi_X + "x Time");                                       // ...show this Information
+    if(Filled == false && Multi_X >= 4){                                                        // When dots instead of lines are drawing and resolution is to high for Display,...
+      display.drawString(112, 0, "BW");                                                         // ...show Black/White (BW) indicator
+    }
+    
   }
 
   return;

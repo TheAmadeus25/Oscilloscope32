@@ -15,7 +15,7 @@
   │                                                                                  ┃
   │                                                                                  ┃
   ├──────────────────────────┬─────────────────────────┤
-  │ Version: 0.0.1 - ALPHA                    Date: 24.Sep.2019                      ┃
+  │ Version: 0.0.2 - ALPHA                    Date: 25.Sep.2019                      ┃
   ├──────────────────────────┴─────────────────────────┤
   └────────────────────────────────────────────────────┘
 */
@@ -23,6 +23,16 @@
 void InitESP() {                                    // # Setting Up the ESP32
   pinMode(LED, OUTPUT);                             // Setting Pin to Output
   pinMode(BTN, INPUT);                              // Setting Pin to Input
+
+  return;
+}
+
+void LED_Error() {                                              // # Blue LED when Potentiometer reache (close) max value (3.3V)
+  if (Multi_X == (BUFFERSIZE / MAX_X) || Offset_Y >= 2040 ) {   // When you Potentiometer reach critical value (16)
+    digitalWrite(LED, HIGH);                                    // Built-In Blue LED start shining
+  } else {
+    digitalWrite(LED, LOW);                                     // Built-In Blue LED stops shining
+  }
 
   return;
 }
